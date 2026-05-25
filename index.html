@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Cocina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @media print {
+            * { visibility: hidden; margin: 0; padding: 0; }
+            #order-result, #order-result * { visibility: visible; }
+            #order-result {
+                position: fixed;
+                left: 0; top: 0;
+                width: 58mm;
+                font-family: 'Courier New', Courier, monospace;
+                white-space: pre-wrap;
+                font-size: 11px;
+                line-height: 1.4;
+                background: white;
+                overflow: visible;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-green-700 mx-auto mb-3"></div>
+            <p class="text-gray-600 font-medium">Cargando datos...</p>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800 text-center">Gestión de Cocina</h1>
+
+        <div class="flex flex-wrap justify-between items-center mb-6 border-b pb-2 gap-2">
+            <button id="btn-pedidos" onclick="showTab('pedidos')" class="px-4 py-2 bg-green-800 text-white rounded font-bold">Pedidos</button>
+            <div class="flex gap-2">
+                <button id="btn-menu" onclick="showTab('menu')" class="px-4 py-2 bg-blue-600 text-white rounded font-bold">Menú</button>
+                <button id="btn-clientes" onclick="showTab('clientes')" class="px-4 py-2 bg-blue-600 text-white rounded font-bold">Clientes</button>
+            </div>
+        </div>
+
+        <!-- Error banner -->
+        <div id="error-banner" class="hidden mb-4 p-3 bg-red-100 border border-red-400 text-red-800 rounded text-sm"></div>
+
+        <div id="tab-pedidos" class="tab">
+            <h2 class="text-xl font-semibold mb-3">Nuevo Pedido</h2>
+
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">1. Seleccione Cliente</label>
+            <select id="sel-cliente" class="border p-2 w-full mb-4 rounded"></select>
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">2. Horario de salida</label>
+            <select id="order-time" class="border p-2 w-full mb-4 rounded">
+                <option value="">-- Seleccioná un horario --</option>
+                <option value="12:00 pm">12:00 pm</option>
+                <option value="12:30 pm">12:30 pm</option>
+                <option value="13:00 pm">13:00 pm</option>
+                <option value="13:30 pm">13:30 pm</option>
+            </select>
+
+            <h3 class="font-bold text-lg mb-2">Productos</h3>
+            <div id="sel-productos" class="mb-4 space-y-2 pb-52"></div>
+        </div>
+
+        <!-- Barra flotante de acciones -->
+        <div id="floating-bar" class="hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg py-3 z-40">
+            <div class="max-w-4xl mx-auto px-6 flex flex-col gap-2">
+                <div id="order-result" class="p-3 bg-gray-50 border rounded font-mono text-xs text-gray-700">El ticket aparecerá aquí.</div>
+                <div class="flex gap-2">
+                    <button onclick="calculateOrder()" class="flex-1 bg-blue-500 text-white py-3 rounded font-bold text-sm">Generar Ticket</button>
+                    <button onclick="clearOrder()" class="flex-1 bg-red-500 text-white py-3 rounded font-bold text-sm">Limpiar</button>
+                </div>
+                <button onclick="window.print()" class="w-full bg-gray-800 text-white py-3 rounded font-bold text-sm">Imprimir Ticket</button>
+            </div>
+        </div>
+
+        <div id="tab-menu" class="tab hidden">
+            <h2 class="text-xl font-semibold mb-3">Gestionar Menú</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="flex flex-col">
+                    <label class="text-sm font-medium mb-1">Nombre</label>
+                    <input id="prod-name" placeholder="Ej. Milanesa" class="border p-2 rounded">
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-sm font-medium mb-1">Precio ($)</label>
+                    <input id="prod-price" type="number" placeholder="Ej. 1000" class="border p-2 rounded">
+                </div>
+            </div>
+            <button onclick="saveProduct()" class="bg-green-600 text-white px-4 py-2 rounded w-full font-bold">Guardar Producto</button>
+            <div id="list-menu" class="mt-6 border-t pt-4 space-y-4"></div>
+        </div>
+
+        <div id="tab-clientes" class="tab hidden">
+            <h2 class="text-xl font-semibold mb-3">Gestionar Clientes</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="flex flex-col">
+                    <label class="text-sm font-medium mb-1">Nombre</label>
+                    <input id="cli-name" placeholder="Nombre" class="border p-2 rounded">
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-sm font-medium mb-1">Tipo de cliente</label>
+                    <input id="cli-addr" placeholder="Tipo de cliente" class="border p-2 rounded">
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-sm font-medium mb-1">Teléfono</label>
+                    <input id="cli-phone" placeholder="Teléfono" class="border p-2 rounded">
+                </div>
+            </div>
+            <button onclick="saveClient()" class="bg-green-600 text-white px-4 py-2 rounded w-full font-bold">Guardar Cliente</button>
+            <div id="list-clientes" class="mt-6 border-t pt-4 space-y-4"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  CONFIGURACIÓN SUPABASE — reemplazá con tus credenciales
+        // ============================================================
+        const SUPABASE_URL  = 'https://mdkhoaqlfpbzzfikmzoi.supabase.co';
+        const SUPABASE_KEY  = 'sb_publishable_J0P8xBgroHlXHzIhkJfrSg_RjL6r5JQ';
+        // ============================================================
+
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let menu     = [];
+        let clientes = [];
+
+        // ---------- utilidades de UI ----------
+
+        function showError(msg) {
+            const banner = document.getElementById('error-banner');
+            banner.textContent = '⚠️ ' + msg;
+            banner.classList.remove('hidden');
+            setTimeout(() => banner.classList.add('hidden'), 5000);
+        }
+
+        function setLoading(visible) {
+            document.getElementById('loading-overlay').style.display = visible ? 'flex' : 'none';
+        }
+
+        // ---------- inicialización ----------
+
+        async function initData() {
+            setLoading(true);
+            try {
+                const [{ data: menuData, error: menuErr }, { data: cliData, error: cliErr }] =
+                    await Promise.all([
+                        sb.from('menu').select('*'),
+                        sb.from('clientes').select('*')
+                    ]);
+
+                if (menuErr) throw menuErr;
+                if (cliErr)  throw cliErr;
+
+                // Mapear es_menu_del_dia (DB) → esMenuDelDia (JS)
+                menu     = (menuData || []).map(p => ({ ...p, esMenuDelDia: p.es_menu_del_dia }));
+                clientes = cliData || [];
+
+                renderLists();
+            } catch (err) {
+                showError('No se pudo conectar con Supabase: ' + err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // ---------- tabs ----------
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.add('hidden'));
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+
+            document.getElementById('btn-pedidos').className = "px-4 py-2 bg-green-600 text-white rounded font-bold";
+            document.getElementById('btn-menu').className    = "px-4 py-2 bg-blue-600 text-white rounded font-bold";
+            document.getElementById('btn-clientes').className = "px-4 py-2 bg-blue-600 text-white rounded font-bold";
+
+            if (tabName === 'pedidos')  document.getElementById('btn-pedidos').className  = "px-4 py-2 bg-green-800 text-white rounded font-bold";
+            if (tabName === 'menu')     document.getElementById('btn-menu').className      = "px-4 py-2 bg-blue-800 text-white rounded font-bold";
+            if (tabName === 'clientes') document.getElementById('btn-clientes').className  = "px-4 py-2 bg-blue-800 text-white rounded font-bold";
+
+            const bar = document.getElementById('floating-bar');
+            if (tabName === 'pedidos') bar.classList.remove('hidden');
+            else bar.classList.add('hidden');
+
+            renderLists();
+        }
+
+        // ---------- menú ----------
+
+        function getSortedMenu() {
+            return [...menu].sort((a, b) => {
+                if (a.esMenuDelDia && !b.esMenuDelDia) return -1;
+                if (!a.esMenuDelDia && b.esMenuDelDia) return 1;
+                return a.nombre.toLowerCase().localeCompare(b.nombre.toLowerCase());
+            });
+        }
+
+        async function saveProduct() {
+            const nameInput  = document.getElementById('prod-name');
+            const priceInput = document.getElementById('prod-price');
+            if (!nameInput.value || !priceInput.value) return;
+
+            setLoading(true);
+            try {
+                const newProd = {
+                    nombre: nameInput.value.trim(),
+                    precio: parseFloat(priceInput.value),
+                    es_menu_del_dia: false
+                };
+                const { data, error } = await sb.from('menu').insert(newProd).select().single();
+                if (error) throw error;
+
+                menu.push({ ...data, esMenuDelDia: data.es_menu_del_dia });
+                nameInput.value  = '';
+                priceInput.value = '';
+                renderLists();
+            } catch (err) {
+                showError('Error al guardar producto: ' + err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function toggleMenuDia(index) {
+            const sortedMenu = getSortedMenu();
+            const target = sortedMenu[index];
+            const wasMenu = target.esMenuDelDia;
+
+            setLoading(true);
+            try {
+                // Quitar el menú del día actual (si existe)
+                const current = menu.find(p => p.esMenuDelDia);
+                if (current) {
+                    const { error } = await sb.from('menu').update({ es_menu_del_dia: false }).eq('id', current.id);
+                    if (error) throw error;
+                    current.esMenuDelDia = false;
+                }
+
+                // Marcar el nuevo (si no era el mismo)
+                if (!wasMenu) {
+                    const { error } = await sb.from('menu').update({ es_menu_del_dia: true }).eq('id', target.id);
+                    if (error) throw error;
+                    target.esMenuDelDia = true;
+                }
+
+                renderLists();
+            } catch (err) {
+                showError('Error al actualizar Menú del día: ' + err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function editProductField(index, field) {
+            const currentSorted = getSortedMenu();
+            const target = currentSorted[index];
+            const labels = { nombre: 'Nombre', precio: 'Precio' };
+            const newVal = prompt(`Editar ${labels[field]}:`, target[field]);
+            if (newVal === null || newVal === '') return;
+
+            const parsedVal = field === 'precio' ? parseFloat(newVal) : newVal.trim();
+            setLoading(true);
+            try {
+                const { error } = await sb.from('menu').update({ [field]: parsedVal }).eq('id', target.id);
+                if (error) throw error;
+                target[field] = parsedVal;
+                renderLists();
+            } catch (err) {
+                showError('Error al editar producto: ' + err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function deleteProduct(index) {
+            const currentSorted = getSortedMenu();
+            const target = currentSorted[index];
+            if (!confirm(`¿Eliminar "${target.nombre}"?`)) return;
+
+            setLoading(true);
+            try {
+                const { error } = await sb.from('menu').delete().eq('id', target.id);
+                if (error) throw error;
+                menu = menu.filter(p => p.id !== target.id);
+                renderLists();
+            } catch (err) {
+                showError('Error al eliminar producto: ' + err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // ---------- clientes ----------
+
+        function getSortedClientes() {
+            return [...clientes].sort((a, b) => a.nombre.toLowerCase().localeCompare(b.nombre.toLowerCase()));
+        }
+
+        async function saveClient() {
+            const name = document.getElementById('cli-name');
+            const addr = document.getElementById('cli-addr');
+            const tel  = document.getElementById('cli-phone');
+            if (!name.value) return;
+
+            setLoading(true);
+            try {
+                const newCli = { nombre: name.value.trim(), dir: addr.value.trim(), tel: tel.value.trim() };
+                const { data, error } = await sb.from('clientes').insert(newCli).select().single();
+                if (error) throw error;
+
+                clientes.push(data);
+                name.value = '';
+                addr.value = '';
+                tel.value  = '';
+                renderLists();
+            } catch (err) {
+                showError('Error al guardar cliente: ' + err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function editClientField(index, field) {
+            const currentSorted = getSortedClientes();
+            const target = currentSorted[index];
+            const labels = { nombre: 'Nombre', dir: 'Dirección', tel: 'Teléfono' };
+            const newVal = prompt(`Editar ${labels[field]}:`, target[field]);
+            if (newVal === null) return;
+
+            setLoading(true);
+            try {
+                const { error } = await sb.from('clientes').update({ [field]: newVal.trim() }).eq('id', target.id);
+                if (error) throw error;
+                target[field] = newVal.trim();
+                renderLists();
+            } catch (err) {
+                showError('Error al editar cliente: ' + err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function deleteClient(index) {
+            const currentSorted = getSortedClientes();
+            const target = currentSorted[index];
+            if (!confirm(`¿Eliminar cliente "${target.nombre}"?`)) return;
+
+            setLoading(true);
+            try {
+                const { error } = await sb.from('clientes').delete().eq('id', target.id);
+                if (error) throw error;
+                clientes = clientes.filter(c => c.id !== target.id);
+                renderLists();
+            } catch (err) {
+                showError('Error al eliminar cliente: ' + err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // ---------- render ----------
+
+        function renderLists() {
+            const sortedMenu     = getSortedMenu();
+            const sortedClientes = getSortedClientes();
+
+            document.getElementById('list-menu').innerHTML = sortedMenu.map((p, i) => `
+                <div class="bg-gray-50 p-4 rounded border">
+                    <span class="text-lg font-bold block mb-2">
+                        ${p.nombre} - $${p.precio}
+                        ${p.esMenuDelDia ? '<span class="text-xs bg-green-200 px-2 py-0.5 rounded ml-2 font-bold text-green-800">Menú del día</span>' : ''}
+                    </span>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="editProductField(${i}, 'nombre')" class="border border-blue-600 text-blue-600 px-4 py-3 rounded text-sm font-bold">Editar Nombre</button>
+                        <button onclick="editProductField(${i}, 'precio')" class="border border-blue-600 text-blue-600 px-4 py-3 rounded text-sm font-bold">Editar Precio</button>
+                        <button onclick="toggleMenuDia(${i})" class="border border-green-600 text-green-600 px-4 py-3 rounded text-sm font-bold">Menú del día</button>
+                        <button onclick="deleteProduct(${i})" class="border border-red-500 text-red-500 px-4 py-3 rounded text-sm font-bold">Eliminar</button>
+                    </div>
+                </div>`).join('');
+
+            document.getElementById('list-clientes').innerHTML = sortedClientes.map((c, i) => `
+                <div class="bg-gray-50 p-4 rounded text-sm">
+                    <div class="font-bold text-lg mb-2">${c.nombre}</div>
+                    <div class="text-gray-600 mb-2">${c.dir} | Tel: ${c.tel}</div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="editClientField(${i}, 'nombre')" class="border border-blue-600 text-blue-600 px-4 py-3 rounded text-xs font-bold">Editar Nombre</button>
+                        <button onclick="editClientField(${i}, 'dir')"    class="border border-blue-600 text-blue-600 px-4 py-3 rounded text-xs font-bold">Editar tipo de cliente</button>
+                        <button onclick="editClientField(${i}, 'tel')"    class="border border-blue-600 text-blue-600 px-4 py-3 rounded text-xs font-bold">Editar Teléfono</button>
+                        <button onclick="deleteClient(${i})"              class="border border-red-500 text-red-500 px-4 py-3 rounded text-xs font-bold">Eliminar</button>
+                    </div>
+                </div>`).join('');
+
+            // Selector de clientes en Pedidos
+            const selCli = document.getElementById('sel-cliente');
+            selCli.innerHTML = sortedClientes.map(c =>
+                `<option value="${c.nombre}|${c.dir}|${c.tel}">${c.nombre}${c.dir ? ' — ' + c.dir : ''}</option>`
+            ).join('');
+
+            // Productos en Pedidos
+            const selProd = document.getElementById('sel-productos');
+            selProd.innerHTML = sortedMenu.map((p, i) => `
+                <div class="flex items-center gap-2 py-2 border-b">
+                    <input type="checkbox" data-index="${i}" class="prod-check w-5 h-5">
+                    <span class="flex-grow font-medium">
+                        ${p.esMenuDelDia ? '<span class="text-[10px] bg-green-500 text-white px-1.5 rounded mr-1 font-bold">Menú del día</span>' : ''}
+                        ${p.nombre}
+                    </span>
+                    <span class="text-sm text-gray-600">$${p.precio}</span>
+                    <input type="number" value="1" class="w-16 border rounded text-center prod-qty py-1">
+                </div>`).join('');
+        }
+
+        // ---------- pedidos ----------
+
+        function calculateOrder() {
+            let total = 0;
+            let ticketItems = '';
+            const sortedMenu = getSortedMenu();
+            document.querySelectorAll('.prod-check:checked').forEach(chk => {
+                const i   = chk.dataset.index;
+                const qty = chk.parentElement.querySelector('.prod-qty').value;
+                const p   = sortedMenu[i];
+                total += p.precio * qty;
+                ticketItems += `${qty}x ${p.esMenuDelDia ? '(Menú del día) ' : ''}${p.nombre} - $${p.precio * qty}\n`;
+            });
+            const cInfo = document.getElementById('sel-cliente').value
+                ? document.getElementById('sel-cliente').value.split('|')
+                : ['Sin cliente', 'N/A', 'N/A'];
+            const timeVal = document.getElementById('order-time').value || '--:--';
+            document.getElementById('order-result').innerText =
+                `TICKET DE COCINA\n----------------\nCliente: ${cInfo[0]}\nTipo: ${cInfo[1]}\nTel: ${cInfo[2]}\nSalida: ${timeVal}\n----------------\n${ticketItems}----------------\nTOTAL: $${total}`;
+        }
+
+        function clearOrder() {
+            document.querySelectorAll('.prod-check').forEach(chk => chk.checked = false);
+            document.querySelectorAll('.prod-qty').forEach(qty => qty.value = '1');
+            document.getElementById('order-time').selectedIndex = 0;
+            document.getElementById('order-result').innerText = 'El ticket aparecerá aquí.';
+        }
+
+        // ---------- arranque ----------
+        initData();
+        document.getElementById('floating-bar').classList.remove('hidden');
+    </script>
+</body>
+</html>
