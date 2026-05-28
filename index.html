@@ -8,22 +8,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @media print {
-            * { visibility: hidden; margin: 0; padding: 0; }
-            #order-result, #order-result * { visibility: visible; }
-            #order-result {
-                position: fixed;
-                left: 0; top: 0;
-                width: 58mm;
-                font-family: 'Courier New', Courier, monospace;
-                white-space: pre-wrap;
-                font-size: 11px;
-                line-height: 1.4;
-                background: white;
-                overflow: visible;
-                max-height: none;
-            }
+            body { display: none !important; }
         }
     </style>
+    <iframe id="print-frame" style="display:none;"></iframe>
 </head>
 <body class="bg-gray-100 p-4">
 
@@ -77,7 +65,7 @@
                     <button onclick="calculateOrder()" class="flex-1 bg-blue-500 text-white py-3 rounded font-bold text-sm">Generar Ticket</button>
                     <button onclick="clearOrder()" class="flex-1 bg-red-500 text-white py-3 rounded font-bold text-sm">Limpiar</button>
                 </div>
-                <button onclick="window.print()" class="w-full bg-gray-800 text-white py-3 rounded font-bold text-sm">Imprimir Ticket</button>
+                <button onclick="imprimirTicket()" class="w-full bg-gray-800 text-white py-3 rounded font-bold text-sm">Imprimir Ticket</button>
             </div>
         </div>
 
@@ -418,23 +406,95 @@
 
         // ---------- pedidos ----------
 
+        function padLine(left, right, width) {
+            const spaces = width - left.length - right.length;
+            return left + ' '.repeat(Math.max(spaces, 1)) + right;
+        }
+        function centerLine(text, width) {
+            const pad = Math.max(0, Math.floor((width - text.length) / 2));
+            return ' '.repeat(pad) + text;
+        }
+
         function calculateOrder() {
+            const W = 32;
+            const SEP = '-'.repeat(W);
             let total = 0;
-            let ticketItems = '';
+            let lines = [];
             const sortedMenu = getSortedMenu();
+
             document.querySelectorAll('.prod-check:checked').forEach(chk => {
                 const i   = chk.dataset.index;
-                const qty = chk.parentElement.querySelector('.prod-qty').value;
+                const qty = parseInt(chk.parentElement.querySelector('.prod-qty').value) || 1;
                 const p   = sortedMenu[i];
-                total += p.precio * qty;
-                ticketItems += `${qty}x ${p.esMenuDelDia ? '(Menú del día) ' : ''}${p.nombre} - $${p.precio * qty}\n`;
+                const sub = p.precio * qty;
+                total += sub;
+                const label = `${qty}x ${p.nombre}`.substring(0, W - 9);
+                lines.push(padLine(label, `$${sub}`, W));
             });
+
             const cInfo = document.getElementById('sel-cliente').value
                 ? document.getElementById('sel-cliente').value.split('|')
-                : ['Sin cliente', 'N/A', 'N/A'];
+                : ['Sin cliente', '', ''];
             const timeVal = document.getElementById('order-time').value || '--:--';
-            document.getElementById('order-result').innerText =
-                `TICKET DE COCINA\n----------------\nCliente: ${cInfo[0]}\nTipo: ${cInfo[1]}\nTel: ${cInfo[2]}\nSalida: ${timeVal}\n----------------\n${ticketItems}----------------\nTOTAL: $${total}`;
+
+            const ticket = [
+                centerLine('*** TICKET DE COCINA ***', W),
+                centerLine(new Date().toLocaleDateString('es-AR'), W),
+                SEP,
+                padLine('Cliente:', cInfo[0].substring(0, W - 9), W),
+                cInfo[1] ? padLine('Tipo:', cInfo[1].substring(0, W - 6), W) : null,
+                cInfo[2] ? padLine('Tel:', cInfo[2].substring(0, W - 5), W) : null,
+                padLine('Salida:', timeVal, W),
+                SEP,
+                ...lines,
+                SEP,
+                padLine('TOTAL:', `$${total}`, W),
+                SEP,
+                centerLine('¡Buen provecho!', W),
+            ].filter(Boolean).join('\n');
+
+            document.getElementById('order-result').innerText = ticket;
+        }
+
+        function imprimirTicket() {
+            const texto = document.getElementById('order-result').innerText;
+            if (!texto || texto === 'El ticket aparecerá aquí.') {
+                alert('Generá el ticket primero.');
+                return;
+            }
+            const frame = document.getElementById('print-frame');
+            const doc = frame.contentDocument || frame.contentWindow.document;
+            doc.open();
+            doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+    size: 58mm auto;
+    margin: 0;
+  }
+  html, body {
+    width: 58mm;
+    margin: 0;
+    padding: 2mm 2mm 4mm 2mm;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 9pt;
+    line-height: 1.35;
+    color: #000;
+    background: #fff;
+    white-space: pre;
+    word-break: break-all;
+  }
+</style>
+</head>
+<body>${texto.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</body>
+</html>`);
+            doc.close();
+            setTimeout(() => {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+            }, 150);
         }
 
         function clearOrder() {
