@@ -390,21 +390,61 @@
                 `<option value="${c.nombre}|${c.dir}|${c.tel}">${c.nombre}${c.dir ? ' — ' + c.dir : ''}</option>`
             ).join('');
 
-            // Productos en Pedidos
+            // Productos en Pedidos — cards clickeables con +/-
             const selProd = document.getElementById('sel-productos');
             selProd.innerHTML = sortedMenu.map((p, i) => `
-                <div class="flex items-center gap-2 py-2 border-b">
-                    <input type="checkbox" data-index="${i}" class="prod-check w-5 h-5">
-                    <span class="flex-grow font-medium">
-                        ${p.esMenuDelDia ? '<span class="text-[10px] bg-green-500 text-white px-1.5 rounded mr-1 font-bold">Menú del día</span>' : ''}
-                        ${p.nombre}
-                    </span>
-                    <span class="text-sm text-gray-600">$${p.precio}</span>
-                    <input type="number" value="1" class="w-16 border rounded text-center prod-qty py-1">
+                <div id="prod-card-${i}"
+                     onclick="toggleProdCard(${i})"
+                     class="prod-card flex items-center gap-3 py-3 px-3 border rounded-lg mb-2 cursor-pointer select-none transition-colors duration-150 bg-white hover:bg-gray-50"
+                     data-index="${i}" data-selected="false">
+                    <div class="flex-grow">
+                        ${p.esMenuDelDia ? '<span class="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded mr-1 font-bold">Menú del día</span>' : ''}
+                        <span class="font-medium">${p.nombre}</span>
+                        <span class="text-sm text-gray-500 ml-2">$${p.precio}</span>
+                    </div>
+                    <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                        <button onclick="changeQty(${i}, -1)" class="qty-btn w-8 h-8 rounded-full border-2 border-gray-300 text-gray-600 font-bold text-lg flex items-center justify-center hover:border-red-400 hover:text-red-500 transition-colors">−</button>
+                        <span id="qty-${i}" class="prod-qty w-8 text-center font-bold text-base">0</span>
+                        <button onclick="changeQty(${i}, 1)" class="qty-btn w-8 h-8 rounded-full border-2 border-gray-300 text-gray-600 font-bold text-lg flex items-center justify-center hover:border-green-500 hover:text-green-600 transition-colors">+</button>
+                    </div>
                 </div>`).join('');
         }
 
         // ---------- pedidos ----------
+
+        function toggleProdCard(i) {
+            const card = document.getElementById(`prod-card-${i}`);
+            const isSelected = card.dataset.selected === 'true';
+            const qtyEl = document.getElementById(`qty-${i}`);
+            if (!isSelected) {
+                card.dataset.selected = 'true';
+                card.classList.add('bg-green-50', 'border-green-500');
+                card.classList.remove('bg-white');
+                if (parseInt(qtyEl.textContent) === 0) qtyEl.textContent = '1';
+            } else {
+                card.dataset.selected = 'false';
+                card.classList.remove('bg-green-50', 'border-green-500');
+                card.classList.add('bg-white');
+                qtyEl.textContent = '0';
+            }
+        }
+
+        function changeQty(i, delta) {
+            const qtyEl = document.getElementById(`qty-${i}`);
+            const card  = document.getElementById(`prod-card-${i}`);
+            let qty = parseInt(qtyEl.textContent) + delta;
+            if (qty < 0) qty = 0;
+            qtyEl.textContent = qty;
+            if (qty > 0) {
+                card.dataset.selected = 'true';
+                card.classList.add('bg-green-50', 'border-green-500');
+                card.classList.remove('bg-white');
+            } else {
+                card.dataset.selected = 'false';
+                card.classList.remove('bg-green-50', 'border-green-500');
+                card.classList.add('bg-white');
+            }
+        }
 
         function padLine(left, right, width) {
             const spaces = width - left.length - right.length;
@@ -420,9 +460,11 @@
             let itemsHTML = '';
             const sortedMenu = getSortedMenu();
 
-            document.querySelectorAll('.prod-check:checked').forEach(chk => {
-                const i   = chk.dataset.index;
-                const qty = parseInt(chk.parentElement.querySelector('.prod-qty').value) || 1;
+            document.querySelectorAll('.prod-card').forEach(card => {
+                if (card.dataset.selected !== 'true') return;
+                const i   = card.dataset.index;
+                const qty = parseInt(document.getElementById(`qty-${i}`).textContent) || 0;
+                if (qty === 0) return;
                 const p   = sortedMenu[i];
                 const sub = p.precio * qty;
                 total += sub;
@@ -507,10 +549,15 @@
         }
 
         function clearOrder() {
-            document.querySelectorAll('.prod-check').forEach(chk => chk.checked = false);
-            document.querySelectorAll('.prod-qty').forEach(qty => qty.value = '1');
+            document.querySelectorAll('.prod-card').forEach(card => {
+                card.dataset.selected = 'false';
+                card.classList.remove('bg-green-50', 'border-green-500');
+                card.classList.add('bg-white');
+            });
+            document.querySelectorAll('.prod-qty').forEach(el => el.textContent = '0');
             document.getElementById('order-time').selectedIndex = 0;
-            document.getElementById('order-result').innerText = 'El ticket aparecerá aquí.';
+            document.getElementById('order-result').innerHTML = 'El ticket aparecerá aquí.';
+            document.getElementById('order-result').dataset.ticketHtml = '';
         }
 
         // ---------- arranque ----------
