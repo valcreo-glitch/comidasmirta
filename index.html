@@ -416,10 +416,8 @@
         }
 
         function calculateOrder() {
-            const W = 32;
-            const SEP = '-'.repeat(W);
             let total = 0;
-            let lines = [];
+            let itemsHTML = '';
             const sortedMenu = getSortedMenu();
 
             document.querySelectorAll('.prod-check:checked').forEach(chk => {
@@ -428,37 +426,52 @@
                 const p   = sortedMenu[i];
                 const sub = p.precio * qty;
                 total += sub;
-                const label = `${qty}x ${p.nombre}`.substring(0, W - 9);
-                lines.push(padLine(label, `$${sub}`, W));
+                itemsHTML += `<tr>
+                    <td style="padding:3px 0;">${qty}x ${p.nombre}</td>
+                    <td style="text-align:right; padding:3px 0; font-weight:700;">$${sub}</td>
+                </tr>`;
             });
 
             const cInfo = document.getElementById('sel-cliente').value
                 ? document.getElementById('sel-cliente').value.split('|')
                 : ['Sin cliente', '', ''];
             const timeVal = document.getElementById('order-time').value || '--:--';
+            const fecha   = new Date().toLocaleDateString('es-AR');
 
-            const ticket = [
-                centerLine('*** TICKET DE COCINA ***', W),
-                centerLine(new Date().toLocaleDateString('es-AR'), W),
-                SEP,
-                padLine('Cliente:', cInfo[0].substring(0, W - 9), W),
-                cInfo[1] ? padLine('Tipo:', cInfo[1].substring(0, W - 6), W) : null,
-                cInfo[2] ? padLine('Tel:', cInfo[2].substring(0, W - 5), W) : null,
-                padLine('Salida:', timeVal, W),
-                SEP,
-                ...lines,
-                SEP,
-                padLine('TOTAL:', `$${total}`, W),
-                SEP,
-                centerLine('¡Buen provecho!', W),
-            ].filter(Boolean).join('\n');
+            const ticketHTML = `
+<div style="text-align:center; font-weight:900; font-size:15pt; letter-spacing:1px;">TICKET DE COCINA</div>
+<div style="text-align:center; font-size:9pt; margin-bottom:6px;">${fecha}</div>
+<hr style="border:1px dashed #000; margin:4px 0;">
+<table style="width:100%; font-size:11pt; border-collapse:collapse;">
+  <tr><td style="padding:2px 0;"><b>Cliente:</b></td><td style="padding:2px 0; font-weight:700;">${cInfo[0]}</td></tr>
+  ${cInfo[1] ? `<tr><td style="padding:2px 0;"><b>Tipo:</b></td><td style="padding:2px 0;">${cInfo[1]}</td></tr>` : ''}
+  ${cInfo[2] ? `<tr><td style="padding:2px 0;"><b>Tel:</b></td><td style="padding:2px 0;">${cInfo[2]}</td></tr>` : ''}
+  <tr><td style="padding:2px 0;"><b>Salida:</b></td><td style="padding:2px 0; font-weight:700;">${timeVal}</td></tr>
+</table>
+<hr style="border:1px dashed #000; margin:6px 0;">
+<table style="width:100%; font-size:11pt; border-collapse:collapse;">
+  ${itemsHTML}
+</table>
+<hr style="border:1px dashed #000; margin:6px 0;">
+<table style="width:100%; font-size:13pt; border-collapse:collapse;">
+  <tr>
+    <td style="font-weight:900;">TOTAL</td>
+    <td style="text-align:right; font-weight:900; font-size:15pt;">$${total}</td>
+  </tr>
+</table>
+<hr style="border:1px dashed #000; margin:6px 0;">
+<div style="text-align:center; font-size:9pt; margin-top:4px;">¡Buen provecho!</div>`;
 
-            document.getElementById('order-result').innerText = ticket;
+            // Vista previa en pantalla
+            document.getElementById('order-result').innerHTML = ticketHTML;
+            // Guardar para impresión
+            document.getElementById('order-result').dataset.ticketHtml = ticketHTML;
         }
 
         function imprimirTicket() {
-            const texto = document.getElementById('order-result').innerText;
-            if (!texto || texto === 'El ticket aparecerá aquí.') {
+            const el = document.getElementById('order-result');
+            const html = el.dataset.ticketHtml || '';
+            if (!html) {
                 alert('Generá el ticket primero.');
                 return;
             }
@@ -470,25 +483,21 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  @page {
-    size: 58mm auto;
-    margin: 0;
-  }
+  @page { size: 58mm auto; margin: 0; }
   html, body {
     width: 58mm;
     margin: 0;
-    padding: 2mm 2mm 4mm 2mm;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 9pt;
-    line-height: 1.35;
+    padding: 3mm 2mm 6mm 2mm;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11pt;
     color: #000;
     background: #fff;
-    white-space: pre;
-    word-break: break-all;
+    -webkit-print-color-adjust: exact;
   }
+  table { width: 100%; border-collapse: collapse; }
 </style>
 </head>
-<body>${texto.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</body>
+<body>${html}</body>
 </html>`);
             doc.close();
             setTimeout(() => {
