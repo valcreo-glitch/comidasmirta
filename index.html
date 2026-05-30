@@ -481,17 +481,17 @@
             const fecha   = new Date().toLocaleDateString('es-AR');
 
             const ticketHTML = `
-<div style="text-align:center; font-weight:900; font-size:15pt; letter-spacing:1px;">TICKET DE COCINA</div>
-<div style="text-align:center; font-size:9pt; margin-bottom:6px;">${fecha}</div>
+<div style="text-align:center; font-weight:900; font-size:15pt; letter-spacing:1px;">DOÑA MIRTA</div>
+<div style="text-align:center; font-size:11pt; margin-bottom:6px;">${fecha}</div>
 <hr style="border:1px dashed #000; margin:4px 0;">
 <table style="width:100%; font-size:11pt; border-collapse:collapse;">
-  <tr><td style="padding:2px 0;"><b>Cliente:</b></td><td style="padding:2px 0; font-weight:700;">${cInfo[0]}</td></tr>
-  ${cInfo[1] ? `<tr><td style="padding:2px 0;"><b>Tipo:</b></td><td style="padding:2px 0;">${cInfo[1]}</td></tr>` : ''}
-  ${cInfo[2] ? `<tr><td style="padding:2px 0;"><b>Tel:</b></td><td style="padding:2px 0;">${cInfo[2]}</td></tr>` : ''}
-  <tr><td style="padding:2px 0;"><b>Salida:</b></td><td style="padding:2px 0; font-weight:700;">${timeVal}</td></tr>
+  <tr><td style="padding:2px 0;"><b>Cliente:</b></td><td style="padding:2px 0;font-size:16pt; font-weight:700;">${cInfo[0]}</td></tr>
+  ${cInfo[1] ? `<tr><td style="padding:2px 0;"><b>Tipo:</b></td><td style="padding:2px 0; font-size:16pt;">${cInfo[1]}</td></tr>` : ''}
+  ${cInfo[2] ? `<tr><td style="padding:2px 0;"><b>Tel:</b></td><td style="padding:2px 0; font-size:14pt;">${cInfo[2]}</td></tr>` : ''}
+  <tr><td style="padding:2px 0;"><b>Salida:</b></td><td style="padding:2px 0; font-weight:700; font-size:14pt;">${timeVal}</td></tr>
 </table>
 <hr style="border:1px dashed #000; margin:6px 0;">
-<table style="width:100%; font-size:11pt; border-collapse:collapse;">
+<table style="width:100%; font-size:14pt; border-collapse:collapse;">
   ${itemsHTML}
 </table>
 <hr style="border:1px dashed #000; margin:6px 0;">
@@ -531,7 +531,7 @@
     margin: 0;
     padding: 3mm 2mm 6mm 2mm;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 11pt;
+    font-size: 12pt;
     color: #000;
     background: #fff;
     -webkit-print-color-adjust: exact;
