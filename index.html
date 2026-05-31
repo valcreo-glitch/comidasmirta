@@ -23,7 +23,7 @@
         </div>
     </div>
 
-    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+    <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-lg">
         <h1 class="text-2xl font-bold mb-6 text-gray-800 text-center">Gestión de Cocina</h1>
 
         <div class="flex flex-wrap justify-between items-center mb-6 border-b pb-2 gap-2">
@@ -38,36 +38,49 @@
         <div id="error-banner" class="hidden mb-4 p-3 bg-red-100 border border-red-400 text-red-800 rounded text-sm"></div>
 
         <div id="tab-pedidos" class="tab">
-            <h2 class="text-xl font-semibold mb-3">Nuevo Pedido</h2>
+            <!-- Layout de dos columnas: formulario | ticket -->
+            <div class="flex gap-6 items-start">
 
-            
-            <label class="block text-sm font-medium text-gray-700 mb-1">1. Seleccione Cliente</label>
-            <select id="sel-cliente" class="border p-2 w-full mb-4 rounded"></select>
-            
-            <label class="block text-sm font-medium text-gray-700 mb-1">2. Horario de salida</label>
-            <select id="order-time" class="border p-2 w-full mb-4 rounded">
-                <option value="">Seleccioná un horario</option>
-                <option value="12:00 pm">12:00 pm</option>
-                <option value="12:30 pm">12:30 pm</option>
-                <option value="13:00 pm">13:00 pm</option>
-                <option value="13:30 pm">13:30 pm</option>
-            </select>
+                <!-- Columna izquierda: formulario -->
+                <div class="flex-1 min-w-0">
+                    <h2 class="text-xl font-semibold mb-3">Nuevo Pedido</h2>
 
-            <h3 class="font-bold text-lg mb-2">Productos</h3>
-            <div id="sel-productos" class="mb-4 space-y-2 pb-52"></div>
-        </div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">1. Seleccione Cliente</label>
+                    <select id="sel-cliente" class="border p-2 w-full mb-4 rounded"></select>
+                    
+                    <label class="block text-sm font-medium text-gray-700 mb-1">2. Horario de salida</label>
+                    <select id="order-time" class="border p-2 w-full mb-4 rounded">
+                        <option value="">Seleccioná un horario</option>
+                        <option value="12:00 pm">12:00 pm</option>
+                        <option value="12:30 pm">12:30 pm</option>
+                        <option value="13:00 pm">13:00 pm</option>
+                        <option value="13:30 pm">13:30 pm</option>
+                    </select>
 
-        <!-- Barra flotante de acciones -->
-        <div id="floating-bar" class="hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg py-3 z-40">
-            <div class="max-w-4xl mx-auto px-6 flex flex-col gap-2">
-                <div id="order-result" class="p-3 bg-gray-50 border rounded font-mono text-xs text-gray-700">El ticket aparecerá aquí.</div>
-                <div class="flex gap-2">
-                    <button onclick="calculateOrder()" class="flex-1 bg-blue-500 text-white py-3 rounded font-bold text-sm">Generar Ticket</button>
-                    <button onclick="clearOrder()" class="flex-1 bg-red-500 text-white py-3 rounded font-bold text-sm">Limpiar</button>
+                    <h3 class="font-bold text-lg mb-2">Productos</h3>
+                    <div id="sel-productos" class="mb-4 space-y-2"></div>
                 </div>
-                <button onclick="imprimirTicket()" class="w-full bg-gray-800 text-white py-3 rounded font-bold text-sm">Imprimir Ticket</button>
+
+                <!-- Columna derecha: ticket siempre visible -->
+                <div id="ticket-sidebar" class="w-72 flex-shrink-0" style="position: sticky; top: 16px;">
+                    <div class="border-2 border-gray-300 rounded-lg p-4 bg-gray-50 shadow-md">
+                        <h3 class="font-bold text-base mb-3 text-gray-700 text-center border-b pb-2">🧾 Ticket</h3>
+                        <div id="order-result" class="font-mono text-xs text-gray-700 min-h-24 mb-3">El ticket aparecerá aquí.</div>
+                        <div class="flex flex-col gap-2 mt-3 border-t pt-3">
+                            <div class="flex gap-2">
+                                <button onclick="calculateOrder()" class="flex-1 bg-blue-500 text-white py-2 rounded font-bold text-sm">Generar</button>
+                                <button onclick="clearOrder()" class="flex-1 bg-red-500 text-white py-2 rounded font-bold text-sm">Limpiar</button>
+                            </div>
+                            <button onclick="imprimirTicket()" class="w-full bg-gray-800 text-white py-2 rounded font-bold text-sm">🖨️ Imprimir</button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
+
+        <!-- Barra flotante (ya no se usa en pedidos, se mantiene oculta) -->
+        <div id="floating-bar" class="hidden"></div>
 
         <div id="tab-menu" class="tab hidden">
             <h2 class="text-xl font-semibold mb-3">Gestionar Menú</h2>
@@ -172,9 +185,7 @@
             if (tabName === 'menu')     document.getElementById('btn-menu').className      = "px-4 py-2 bg-blue-800 text-white rounded font-bold";
             if (tabName === 'clientes') document.getElementById('btn-clientes').className  = "px-4 py-2 bg-blue-800 text-white rounded font-bold";
 
-            const bar = document.getElementById('floating-bar');
-            if (tabName === 'pedidos') bar.classList.remove('hidden');
-            else bar.classList.add('hidden');
+            // El ticket ahora está en el sidebar lateral (siempre visible en pedidos)
 
             renderLists();
         }
@@ -418,7 +429,7 @@
             const qtyEl = document.getElementById(`qty-${i}`);
             if (!isSelected) {
                 card.dataset.selected = 'true';
-                card.classList.add('bg-blue-50', 'border-blue-500');
+                card.classList.add('bg-green-50', 'border-green-500');
                 card.classList.remove('bg-white');
                 if (parseInt(qtyEl.textContent) === 0) qtyEl.textContent = '1';
             } else {
@@ -562,7 +573,6 @@
 
         // ---------- arranque ----------
         initData();
-        document.getElementById('floating-bar').classList.remove('hidden');
     </script>
 </body>
 </html>
