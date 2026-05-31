@@ -418,7 +418,7 @@
             const qtyEl = document.getElementById(`qty-${i}`);
             if (!isSelected) {
                 card.dataset.selected = 'true';
-                card.classList.add('bg-green-50', 'border-green-500');
+                card.classList.add('bg-blue-50', 'border-blue-500');
                 card.classList.remove('bg-white');
                 if (parseInt(qtyEl.textContent) === 0) qtyEl.textContent = '1';
             } else {
