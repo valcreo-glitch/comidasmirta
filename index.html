@@ -38,11 +38,11 @@
         <div id="error-banner" class="hidden mb-4 p-3 bg-red-100 border border-red-400 text-red-800 rounded text-sm"></div>
 
         <div id="tab-pedidos" class="tab">
-            <!-- Layout de dos columnas: formulario | ticket -->
+            <!-- Layout de dos columnas en desktop, una columna en mobile -->
             <div class="flex gap-6 items-start">
 
-                <!-- Columna izquierda: formulario -->
-                <div class="flex-1 min-w-0">
+                <!-- Columna izquierda: formulario (en mobile tiene padding abajo para no quedar tapado por el ticket flotante) -->
+                <div class="flex-1 min-w-0 pb-48 md:pb-0">
                     <h2 class="text-xl font-semibold mb-3">Nuevo Pedido</h2>
 
                     <label class="block text-sm font-medium text-gray-700 mb-1">1. Seleccione Cliente</label>
@@ -61,8 +61,8 @@
                     <div id="sel-productos" class="mb-4 space-y-2"></div>
                 </div>
 
-                <!-- Columna derecha: ticket siempre visible -->
-                <div id="ticket-sidebar" class="w-72 flex-shrink-0" style="position: sticky; top: 16px;">
+                <!-- Columna derecha: ticket sticky en desktop, oculto aquí en mobile -->
+                <div id="ticket-sidebar" class="hidden md:block w-72 flex-shrink-0" style="position: sticky; top: 16px;">
                     <div class="border-2 border-gray-300 rounded-lg p-4 bg-gray-50 shadow-md">
                         <h3 class="font-bold text-base mb-3 text-gray-700 text-center border-b pb-2">🧾 Ticket</h3>
                         <div id="order-result" class="font-mono text-xs text-gray-700 min-h-24 mb-3">El ticket aparecerá aquí.</div>
@@ -79,8 +79,17 @@
             </div>
         </div>
 
-        <!-- Barra flotante (ya no se usa en pedidos, se mantiene oculta) -->
-        <div id="floating-bar" class="hidden"></div>
+        <!-- Barra flotante: solo visible en mobile cuando estamos en tab pedidos -->
+        <div id="floating-bar" class="hidden md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-xl py-3 z-40">
+            <div class="px-4 flex flex-col gap-2">
+                <div id="order-result-mobile" class="p-2 bg-gray-50 border rounded font-mono text-xs text-gray-700 max-h-28 overflow-y-auto">El ticket aparecerá aquí.</div>
+                <div class="flex gap-2">
+                    <button onclick="calculateOrder()" class="flex-1 bg-blue-500 text-white py-2 rounded font-bold text-sm">Generar Ticket</button>
+                    <button onclick="clearOrder()" class="flex-1 bg-red-500 text-white py-2 rounded font-bold text-sm">Limpiar</button>
+                </div>
+                <button onclick="imprimirTicket()" class="w-full bg-gray-800 text-white py-2 rounded font-bold text-sm">🖨️ Imprimir Ticket</button>
+            </div>
+        </div>
 
         <div id="tab-menu" class="tab hidden">
             <h2 class="text-xl font-semibold mb-3">Gestionar Menú</h2>
@@ -186,6 +195,9 @@
             if (tabName === 'clientes') document.getElementById('btn-clientes').className  = "px-4 py-2 bg-blue-800 text-white rounded font-bold";
 
             // El ticket ahora está en el sidebar lateral (siempre visible en pedidos)
+            const bar = document.getElementById('floating-bar');
+            if (tabName === 'pedidos') bar.classList.remove('hidden');
+            else bar.classList.add('hidden');
 
             renderLists();
         }
@@ -515,15 +527,17 @@
 <hr style="border:1px dashed #000; margin:6px 0;">
 <div style="text-align:center; font-size:9pt; margin-top:4px;">¡Buen provecho!</div>`;
 
-            // Vista previa en pantalla
+            // Vista previa en pantalla (desktop y mobile)
             document.getElementById('order-result').innerHTML = ticketHTML;
+            document.getElementById('order-result-mobile').innerHTML = ticketHTML;
             // Guardar para impresión
             document.getElementById('order-result').dataset.ticketHtml = ticketHTML;
+            document.getElementById('order-result-mobile').dataset.ticketHtml = ticketHTML;
         }
 
         function imprimirTicket() {
             const el = document.getElementById('order-result');
-            const html = el.dataset.ticketHtml || '';
+            const html = el.dataset.ticketHtml || document.getElementById('order-result-mobile').dataset.ticketHtml || '';
             if (!html) {
                 alert('Generá el ticket primero.');
                 return;
@@ -569,10 +583,13 @@
             document.getElementById('order-time').selectedIndex = 0;
             document.getElementById('order-result').innerHTML = 'El ticket aparecerá aquí.';
             document.getElementById('order-result').dataset.ticketHtml = '';
+            document.getElementById('order-result-mobile').innerHTML = 'El ticket aparecerá aquí.';
+            document.getElementById('order-result-mobile').dataset.ticketHtml = '';
         }
 
         // ---------- arranque ----------
         initData();
+        document.getElementById('floating-bar').classList.remove('hidden');
     </script>
 </body>
 </html>
